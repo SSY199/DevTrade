@@ -5,7 +5,7 @@ import { sendVerificationEmail } from "../mailtrap/emails.js";
 import { sendWelcomeEmail } from "../mailtrap/emails.js";
 import { sendPasswordResetEmail } from "../mailtrap/emails.js";
 import { sendResetSuccessEmail } from "../mailtrap/emails.js";
-import User from "../models/User.js";
+import User from "../models/user.model.js"
 
 export const signup = async (req, res) => {
   const { email, password, name } = req.body;

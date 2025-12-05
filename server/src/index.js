@@ -3,7 +3,8 @@ import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import { connectDB } from "./config/db.js";
-import authRoute from "./routes/authRoute.js";
+import authRoute from "./routes/auth.route.js";
+import projectRoute from "./routes/project.route.js"
 import path from "path";
 import mongoose from "mongoose";
 
@@ -11,7 +12,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const __dirname = path.resolve();
+//const __dirname = path.resolve();
 connectDB();
 
 app.use(
@@ -29,6 +30,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoute);
+app.use("/api/project", projectRoute);
 
 
 
