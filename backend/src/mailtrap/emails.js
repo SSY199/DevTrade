@@ -28,7 +28,7 @@ export const sendWelcomeEmail = async (email, name) => {
       html: `
         <h2>Hello ${name},</h2>
         <p>Welcome! Your dashboard is ready:</p>
-        <a href="Test_Dashboard_link">Open Dashboard</a>
+        <a href="${process.env.CLIENT_URL}/dashboard">Open Dashboard</a>
         <p>Help Center: Authentication</p>
       `,
     });
