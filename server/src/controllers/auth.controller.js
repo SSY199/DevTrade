@@ -25,139 +25,235 @@ export const sendOtp = async (req, res) => {
     });
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const status = err.response ? err.response.status : 500;
+    const msg = err.response ? err.response.data : err.message;
+    
+    return res.status(status).json({ error: msg });
   }
 };
 
 
+// export const verifyOtp = async (req, res) => {
+//   try {
+//     const { state_id, otp, name, password} = req.body;
+
+//     const response = await axios.post(
+//       "https://api.mojoauth.com/users/emailotp/verify",
+//       { state_id, otp },
+//       {
+//         headers: {
+//           "X-API-KEY": process.env.MOJOAUTH_API_KEY
+//         }
+//       }
+//     );
+
+//     // OTP failed
+//     if (!response.data.authenticated) {
+//       return res.status(400).json({ message: "Invalid OTP" });
+//     }
+
+//     // OTP passed
+//     const verifiedEmail = response.data.user.email;
+
+//     // Lookup or create user
+//     let user = await User.findOne({ email: verifiedEmail });
+
+//     if (!user) {
+      
+//       user = await User.create({ email: verifiedEmail, name, password });
+//     }
+
+//     // Create JWT token
+//     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+//       expiresIn: "7d"
+//     });
+
+//     return res.status(200).json({
+//       message: "OTP Verified",
+//       user,
+//       token
+//     });
+
+//   } catch (err) {
+//     return res.status(500).json({ error: err.message });
+//   }
+// };
+
 export const verifyOtp = async (req, res) => {
   try {
-    const { state_id, otp, name, password} = req.body;
+    const { state_id, otp } = req.body;
 
     const response = await axios.post(
       "https://api.mojoauth.com/users/emailotp/verify",
       { state_id, otp },
       {
         headers: {
-          "X-API-KEY": process.env.MOJOAUTH_API_KEY
-        }
+          "X-API-KEY": process.env.MOJOAUTH_API_KEY,
+        },
       }
     );
 
-    // OTP failed
     if (!response.data.authenticated) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
-    // OTP passed
     const verifiedEmail = response.data.user.email;
 
-    // Lookup or create user
-    let user = await User.findOne({ email: verifiedEmail });
-
-    if (!user) {
-      
-      user = await User.create({ email: verifiedEmail, name, password });
-    }
-
-    // Create JWT token
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d"
-    });
+    // Generate a temporary token valid ONLY for signup (not login)
+    const tempToken = jwt.sign(
+      { email: verifiedEmail },
+      process.env.TEMP_JWT_SECRET,
+      { expiresIn: "10m" }
+    );
+    
 
     return res.status(200).json({
       message: "OTP Verified",
-      user,
-      token
+      email: verifiedEmail,
+      tempToken,
     });
-
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 };
 
 
+// export const verifyOtp = async (req, res) => {
+//   const { state_id, otp, name } = req.body;
+
+//   const response = await axios.post(
+//     "https://api.mojoauth.com/users/emailotp/verify",
+//     { state_id, otp },
+//     { headers: { "X-API-KEY": process.env.MOJOAUTH_API_KEY } }
+//   );
+
+//   if (!response.data.authenticated) {
+//     return res.status(400).json({ message: "Invalid OTP" });
+//   }
+
+//   const email = response.data.user.email;
+
+//   let user = await User.findOne({ email });
+//   if (!user) {
+//     user = await User.create({
+//       email,
+//       name,
+//       isEmailVerified: true
+//     });
+//   }
+
+//   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+//     expiresIn: "7d"
+//   });
+
+//   res.status(200).json({ message: "Logged in", token, user });
+// };
+
+
+
+
+// export const signup = async (req, res) => {
+//   const { email, password, name } = req.body;
+
+//   try {
+//     if (!email || !password || !name) {
+//       return res.status(400).json({ message: "All fields are required" });
+//     }
+//     const existingUser = await User.findOne({ email });
+//     if (existingUser) {
+//       return res.status(400).json({ message: "User already exists" });
+//     }
+
+//     const hashPassword = await bcryptjs.hash(password, 10);
+//     const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
+
+//     const user = new User({
+//       email,
+//       password: hashPassword,
+//       name,
+//       verificationToken,
+//       verificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+//     });
+
+//     await user.save();
+//     generateTokenAndCookie(res, user._id);
+
+//     return res.status(201).json({
+//       message: "User created successfully",
+//       user: {
+//         ...user._doc,
+//         password: undefined,
+//       }
+//     });
+//   } catch (error) {
+//     console.error("Error during signup:", error);
+//     return res.status(500).json({ message: "Internal server error" });
+//   }
+// };
 
 export const signup = async (req, res) => {
-  const { email, password, name } = req.body;
-
   try {
-    if (!email || !password || !name) {
-      return res.status(400).json({ message: "All fields are required" });
+    const { name, password, tempToken } = req.body;
+
+
+    if (!name || !password || !tempToken) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
-    const existingUser = await User.findOne({ email });
+
+    // Verify the tempToken
+    let decoded;
+    try {
+      decoded = jwt.verify(tempToken, process.env.TEMP_JWT_SECRET);
+    } catch (err) {
+      return res.status(400).json({ message: "Invalid signup session" });
+    }
+
+
+    const verifiedEmail = decoded.email;
+
+    // Check if user exists
+    const existingUser = await User.findOne({ email: verifiedEmail });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    const hashPassword = await bcryptjs.hash(password, 10);
-    const verificationToken = Math.floor(100000 + Math.random() * 900000).toString();
+    // Create hashed password
+    const hashedPassword = await bcryptjs.hash(password, 10);
 
-    const user = new User({
-      email,
-      password: hashPassword,
+    // Create user
+    const user = await User.create({
       name,
-      verificationToken,
-      verificationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      email: verifiedEmail,
+      password: hashedPassword,
+      isVerified: true, // MojoAuth verified email already
     });
+    
 
-    await user.save();
-    generateTokenAndCookie(res, user._id);
+    // Create login token (normal JWT)
+    const accessToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-    try {
-        await sendVerificationEmail(user.email, verificationToken);
-    } catch (emailError) {
-        console.error("Resend Failed:", emailError);
-        await User.findByIdAndDelete(user._id);
-        return res.status(500).json({ message: "Error sending verification email. Please try again." });
-    }
+    
 
     return res.status(201).json({
-      message: "User created successfully",
+      message: "Signup successful",
+      token: accessToken,
       user: {
-        ...user._doc,
-        password: undefined,
-      },
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      }
     });
-  } catch (error) {
-    console.error("Error during signup:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
 };
 
-export const verifyEmail = async (req, res) => {
-  const { code } = req.body;
-  try {
-    const user = await User.findOne({
-      verificationToken: code,
-      verificationExpiresAt: { $gt: Date.now() }, // Check if the token is still valid
-    });
-
-    if (!user) {
-      return res
-        .status(400)
-        .json({ message: "Invalid or expired verification code" });
-    }
-    user.isVerified = true;
-    user.verificationToken = undefined; // Clear the verification token
-    user.verificationExpiresAt = undefined; // Clear the expiration date
-    await user.save();
-
-    await sendWelcomeEmail(user.email, user.name);
-
-    return res.status(200).json({
-      success: true,
-      message: "Email verified successfully",
-      user: {
-        ...user._doc,
-        password: undefined, // Exclude password from the response
-      },
-    });
-  } catch (error) {
-  console.error("Error during email verification:", error);
-  return res.status(500).json({ message: "Internal server error" });
-}
-};
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
