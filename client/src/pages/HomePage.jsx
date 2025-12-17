@@ -1,7 +1,47 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import axios from "axios";
+import ProjectCard from "@/components/cards/ProjectCards";
+import api from "@/utils/axios";
 
 export default function HomePage() {
+  const [query, setQuery] = useState("");
+  const [projects, setProjects] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // 🔹 Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!query.trim()) {
+        setProjects([]);
+        setIsSearching(false);
+        return;
+      }
+
+      searchProjects();
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const searchProjects = async () => {
+    try {
+      setIsSearching(true);
+
+      const res = await api.get(
+        `project/search?query=${query}`
+      );
+
+      // ✅ SAFETY CHECK
+      setProjects(Array.isArray(res.data) ? res.data : []);
+
+    } catch (err) {
+      console.error("Search failed", err);
+      setProjects([]); // ✅ prevent crash
+    }
+  };
+
   return (
     <main className="px-6 md:px-12 lg:px-20 py-10">
 
@@ -34,23 +74,51 @@ export default function HomePage() {
       <div className="max-w-3xl mx-auto mt-10">
         <input
           type="text"
-          placeholder="Search for projects..."
-          className="w-full p-4 rounded-xl bg-gray-800 border border-gray-700 text-white"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search for projects (React, AI, Web, Tools...)"
+          className="w-full p-4 rounded-xl bg-gray-800 border border-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
         />
       </div>
 
-      {/* FEATURED PROJECTS */}
-      <section className="mt-16 px-4">
-        <h2 className="text-2xl font-semibold text-white mb-6">Featured Projects</h2>
+      {/* SEARCH RESULTS */}
+      {isSearching && (
+        <section className="mt-12 px-4">
+          <h2 className="text-xl font-semibold text-white mb-6">
+            Search Results
+          </h2>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* map your project cards here */}
-        </div>
-      </section>
+          {projects.length === 0 ? (
+            <p className="text-gray-400">No projects found.</p>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.isArray(projects) &&
+                projects.map((project) => (
+                  <ProjectCard key={project._id} project={project} />
+                ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* FEATURED PROJECTS (only when not searching) */}
+      {!query && (
+        <section className="mt-16 px-4">
+          <h2 className="text-2xl font-semibold text-white mb-6">
+            Featured Projects
+          </h2>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* your featured projects mapping */}
+          </div>
+        </section>
+      )}
 
       {/* CATEGORIES */}
       <section className="mt-20 px-4">
-        <h2 className="text-2xl font-semibold text-white mb-6">Browse by Category</h2>
+        <h2 className="text-2xl font-semibold text-white mb-6">
+          Browse by Category
+        </h2>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
@@ -73,7 +141,9 @@ export default function HomePage() {
 
       {/* CTA */}
       <section className="mt-20 text-center py-16 bg-gray-900/50 border border-gray-800 rounded-xl max-w-5xl mx-auto">
-        <h2 className="text-3xl font-bold text-white mb-3">Ready to upload your project?</h2>
+        <h2 className="text-3xl font-bold text-white mb-3">
+          Ready to upload your project?
+        </h2>
         <p className="text-gray-400 mb-6">
           Join hundreds of developers showcasing their best work.
         </p>

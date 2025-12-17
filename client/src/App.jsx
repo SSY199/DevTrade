@@ -11,6 +11,7 @@ import ExploreProjects from "./pages/ExploreProjects";
 import GetMyProjects from "./pages/GetMyProjects";
 import ProjectDetails from "./pages/ProjectDetails";
 import UpdateProject from "./pages/UpdateProject";
+import { SidebarProvider } from "./context/SidebarContext";
 
 function App() {
   return (

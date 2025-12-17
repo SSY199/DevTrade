@@ -1,7 +1,9 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+import { useEffect, useRef, useState } from "react";
+import axios from "axios";
 
 import {
   DropdownMenu,
@@ -11,13 +13,47 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { Search, User } from "lucide-react";
+import api from "@/utils/axios";
 
 export default function Header() {
   const { auth, logout } = useAuth();
   const user = auth?.user;
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isActive = (path) => location.pathname === path;
+
+  // 🔍 Search state
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  // 🔹 Debounced search
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get(
+        `project/search?query=${query}`
+      );
+
+        setResults(Array.isArray(res.data) ? res.data : []);
+        setOpen(true);
+      } catch (err) {
+        console.error("Header search failed", err);
+        setResults([]);
+        setOpen(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [query]);
 
   return (
     <header
@@ -37,23 +73,97 @@ export default function Header() {
           DevTrade
         </Link>
 
-        {/* Search (UI only) */}
-        <div className="hidden md:flex flex-1 max-w-md">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              placeholder="Search projects..."
+        {/* 🔍 SEARCH */}
+        <div
+          ref={containerRef}
+          className="relative hidden md:flex flex-1 max-w-md"
+        >
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search projects..."
+            className="
+              w-full rounded-md
+              bg-gray-900/70
+              border border-gray-800
+              pl-9 pr-3 py-2
+              text-sm text-gray-200
+              placeholder-gray-500
+              focus:outline-none focus:ring-1 focus:ring-blue-600
+            "
+          />
+
+          {/* 🔽 SEARCH RESULTS DROPDOWN */}
+          {open && results.length > 0 && (
+            <div
               className="
-                w-full rounded-md
-                bg-gray-900/70
+                absolute top-full mt-2
+                w-full max-h-[360px] overflow-y-auto
+                rounded-xl
+                bg-gray-950/95 backdrop-blur
                 border border-gray-800
-                pl-9 pr-3 py-2
-                text-sm text-gray-200
-                placeholder-gray-500
-                focus:outline-none focus:ring-1 focus:ring-gray-600
+                shadow-2xl
+                z-50
               "
-            />
-          </div>
+            >
+              {results.map((project) => (
+                <button
+                  key={project._id}
+                  onClick={() => {
+                    navigate(`/project/${project._id}`);
+                    setQuery("");
+                    setOpen(false);
+                  }}
+                  className="
+                    flex w-full items-center gap-3
+                    px-3 py-2
+                    hover:bg-gray-800/70
+                    transition
+                    text-left
+                  "
+                >
+                  {/* Thumbnail */}
+                  <img
+                    src={project.thumbnail || "/placeholder.png"}
+                    alt={project.title}
+                    className="
+                      h-10 w-10
+                      rounded-md
+                      object-cover
+                      border border-gray-700
+                      shrink-0
+                    "
+                  />
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">
+                      {project.title}
+                    </p>
+
+                    <div className="mt-0.5 flex gap-1 flex-wrap">
+                      {project.techStack?.slice(0, 3).map((tech) => (
+                        <span
+                          key={tech}
+                          className="
+                            text-[10px]
+                            px-1.5 py-0.5
+                            rounded
+                            bg-gray-800
+                            text-gray-300
+                          "
+                        >
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Navigation */}
@@ -105,40 +215,20 @@ export default function Header() {
 
               <DropdownMenuContent
                 align="end"
-                className="
-    w-48
-    border border-gray-800
-    bg-gray-900/95
-    backdrop-blur
-    shadow-xl
-  "
+                className="w-48 border border-gray-800 bg-gray-900/95 backdrop-blur shadow-xl"
               >
-                {/* User Info */}
                 <div className="px-3 py-2 text-sm text-gray-300 border-b border-gray-800">
                   Hi,{" "}
                   <span className="font-medium text-white">{user.name}</span>
                 </div>
 
-                {/* Menu Items */}
-                <DropdownMenuItem
-                  className="
-      cursor-pointer
-      text-gray-200
-      focus:bg-gray-800
-      focus:text-white
-    "
-                >
+                <DropdownMenuItem className="cursor-pointer text-gray-200 focus:bg-gray-800 focus:text-white">
                   Profile
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
-                  className="
-      cursor-pointer
-      text-red-400
-      focus:bg-red-500/10
-      focus:text-red-400
-    "
                   onClick={logout}
+                  className="cursor-pointer text-red-400 focus:bg-red-500/10 focus:text-red-400"
                 >
                   Logout
                 </DropdownMenuItem>

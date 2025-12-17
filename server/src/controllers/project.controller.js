@@ -118,6 +118,32 @@ export const uploadProject = async (req, res) => {
   }
 };
 
+export const searchProjects = async (req, res) => {
+  try {
+    console.log(req.query);
+    
+    const q = req.query.query?.trim();
+
+    const results = await Project.find({
+      status: "active",
+      $or: [
+        { title: { $regex: q, $options: "i" } },
+        { description: { $regex: q, $options: "i" } },
+        { category: { $regex: q, $options: "i" } },
+        { techStack: { $elemMatch: { $regex: q, $options: "i" } } },
+      ],
+    }).limit(50);
+
+    return res.json(results); // ALWAYS ARRAY
+  } catch (err) {
+    console.error(err);
+    res.status(500).json([]);
+  }
+};
+
+
+
+
 export const updateProject = async (req, res) => {
   const { id } = req.params;
   const updates = req.body; //title = ai maker, price = 45

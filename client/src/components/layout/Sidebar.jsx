@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -8,9 +9,11 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { useSidebar } from "@/context/SidebarContext";
 
-export default function Sidebar({ open, setOpen }) {
+export default function Sidebar() {
   const { pathname } = useLocation();
+  const { open, setOpen } = useSidebar(); // ✅ Use context
 
   const links = [
     { name: "Home", path: "/", icon: Home },
