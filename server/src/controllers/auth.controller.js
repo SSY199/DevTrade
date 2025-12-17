@@ -32,8 +32,6 @@ export const sendOtp = async (req, res) => {
   }
 };
 
-
-// export const verifyOtp = async (req, res) => {
 //   try {
 //     const { state_id, otp, name, password} = req.body;
 

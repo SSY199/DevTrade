@@ -25,7 +25,7 @@ export default function MyProjects() {
         <h1 className="text-3xl font-bold mb-6">My Projects</h1>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
+          {[1, 2, 3, 4, 5, 6].map((i) => (
             <div
               key={i}
               className="bg-gray-900 border border-gray-800 rounded-xl p-4 animate-pulse"
